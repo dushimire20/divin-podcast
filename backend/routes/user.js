@@ -1,141 +1,141 @@
 const express = require("express");
 const User = require("../model/user");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const authMiddleware = require("../middleware/authMiddleware");
-// signup route
+const {
+  hashedPassword,
+  isPasswordMatched,
+  getLoginToken,
+} = require("../utils/helper");
+const authenticateToken = require("../middleware/authMiddleware");
+
+// Sign-up route
 router.post("/sign-up", async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
+    // Validate input
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required." });
     }
     if (password.length < 6) {
       return res.status(400).json({
-        message: "Length of password should be atleast 6",
+        message: "Password must be at least 6 characters long.",
       });
     }
-    //user exist
-    const existingEmail = await User.findOne({ email: email });
-    const existingName = await User.findOne({ username: username });
-    if (existingEmail || existingName) {
-      return res.status(400).json({
-        message: "User of given email or username already exist",
-      });
+
+    // Normalize email
+    const normalizedEmail = email.toLowerCase();
+
+    // Check for existing user
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { username }],
+    });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "Email or username already exists." });
     }
-    // new user
-    const salt = await bcrypt.genSalt(10);
-    const hashPass = await bcrypt.hash(password, salt);
+
+    // Hash password and save new user
+    const encryptedPassword = await hashedPassword(password);
     const newUser = new User({
       username,
-      email,
-      password: hashPass,
+      email: normalizedEmail,
+      password: encryptedPassword,
     });
     await newUser.save();
-    return res.status(200).json({ message: "Account created" });
+
+    res.status(201).json({ message: "Account created successfully." });
   } catch (error) {
-    res.status(500).json({ error });
+    console.error("Sign-up error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
 
-// sign-in
-
+// Sign-in route
 router.post("/sign-in", async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Validate input
     if (!email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "All fields are required." });
     }
-    const existingUser = await User.findOne({ email: email });
+
+    // Normalize email and find user
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (!existingUser) {
-      return res.status(400).json({
-        message: "Invalid credential",
-      });
+      return res.status(400).json({ message: "Invalid credentials." });
     }
-    const isMatch = await bcrypt.compare(password, existingUser.password);
+
+    // Check password
+    const isMatch = await isPasswordMatched(password, existingUser.password);
     if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid credential",
-      });
+      return res.status(400).json({ message: "Invalid credentials." });
     }
 
-    // create token
+    // Generate token
+    const token = await getLoginToken(existingUser._id, existingUser.email);
 
-    const token = jwt.sign(
-      {
-        id: existingUser._id,
-        username: existingUser.username,
-        email: existingUser.email,
-      },
-      process.env.KEY,
-      { expiresIn: "7d" }
-    );
+    // Set cookie
     res.cookie("podcasterUserToken", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      path: "/",
+      sameSite: "Strict",
     });
-    res.status(200).send({
+
+    res.status(200).json({
       id: existingUser._id,
       username: existingUser.username,
       email: existingUser.email,
-      message: "Sign IN succesfully",
+      message: "Sign-in successful.",
     });
   } catch (error) {
-    res.status(500).json({ error });
+    console.error("Sign-in error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
-// log-out
+
+// Log-out route
 router.post("/log-out", async (req, res) => {
   try {
     res.clearCookie("podcasterUserToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      path: "/",
+      sameSite: "Strict",
     });
-    return res.status(200).send({
-      message: "Log-Out successfully",
-    });
+    res.status(200).json({ message: "Log-out successful." });
   } catch (error) {
-    return res.status(500).json({ error });
+    console.error("Log-out error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
-// check-cookie present or not
 
+// Check if cookie is present
 router.get("/check-cookie", async (req, res) => {
   try {
     const token = req.cookies.podcasterUserToken;
-    if (token) {
-      return res.status(200).send({
-        message: "true",
-      });
-    }
-    return res.status(200).send({
-      message: "false",
-    });
+    res.status(200).json({ message: token ? "true" : "false" });
   } catch (error) {
-    return res.status(500).json({ error });
+    console.error("Check-cookie error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
 
-// route to fetch user details
-
-router.get("/user-details", authMiddleware, async (req, res) => {
+// User details route
+router.get("/user-details", authenticateToken, async (req, res) => {
   try {
-    const { email } = req.user;
-    const existingUser = await User.findOne({ email: email }).select(
-      "-password"
-    );
-    // console.log(existingUser);
-    res.status(200).json({
-      user: existingUser,
-    });
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ error });
+    console.error("User-details error:", error.message);
+    res.status(500).json({ message: "Internal server error." });
   }
 });
+
 module.exports = router;

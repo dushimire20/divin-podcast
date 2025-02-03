@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
@@ -20,25 +20,35 @@ const SignUp = () => {
     const { name, value } = e.target;
     setValues({ ...values, [name]: value });
   };
-  const handleOnClick = async () => {
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Basic client-side validation
+    if (!values.username || !values.email || !values.password) {
+      toast.error("All fields are required.");
+      return;
+    }
+
     try {
       const res = await axios.post(
-        "http://localhost:7000/api/v1/sign-up",
+        "http://localhost:8080/api/v1/sign-up",
         values
       );
-      // toast.success(res.data?.message);
       setValues({ username: "", email: "", password: "" });
       navigate("/login");
     } catch (error) {
-      toast.error(error.response.data.message);
+      // Check if error.response exists before accessing message
+      const errorMessage = error.response?.data?.message || "An error occurred.";
+      toast.error(errorMessage);
     }
   };
+
   useEffect(() => {
-    // Simulate loading when checking login status
     setTimeout(() => {
       setLoading(false); // Set loading to false after checking login status
-    }, 2000); // Example delay of 2 seconds
+    }, 2000);
   }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -46,6 +56,7 @@ const SignUp = () => {
       </div>
     );
   }
+
   return (
     <>
       {isLoggedIn ? (
@@ -56,53 +67,55 @@ const SignUp = () => {
             <Link to={"/"} className="text-2xl font-bold">
               PODCASTER
             </Link>
-            <div className="mt-6 ">
-              <div className="flex flex-col">
-                <label>Username</label>
-                <input
-                  type="text"
-                  className="mt-2 px-2  py-1 border border-black rounded"
-                  required
-                  placeholder="Username"
-                  name="username"
-                  value={values.username}
-                  onChange={change}
-                ></input>
-              </div>
-              <div className="flex flex-col mt-2">
-                <label>Email</label>
-                <input
-                  type="email"
-                  className="mt-2 px-2  py-1 border border-black rounded"
-                  required
-                  placeholder="Email"
-                  name="email"
-                  value={values.email}
-                  onChange={change}
-                ></input>
-              </div>
-              <div className="flex flex-col mt-2">
-                <label>Password</label>
-                <input
-                  type="password"
-                  className="mt-2 px-2  py-1 border border-black rounded"
-                  required
-                  placeholder="Password"
-                  name="password"
-                  value={values.password}
-                  onChange={change}
-                ></input>
-              </div>
-              <div className="flex flex-col mt-4">
-                <button
-                  className="bg-green-900 font-semibold rounded py-2 text-xl text-white"
-                  onClick={handleOnClick}
-                >
-                  SignUp
-                </button>
-              </div>
+            <div className="mt-6">
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-col">
+                  <label>Username</label>
+                  <input
+                    type="text"
+                    className="mt-2 px-2 py-1 border border-black rounded"
+                    required
+                    placeholder="Username"
+                    name="username"
+                    value={values.username}
+                    onChange={change}
+                  />
+                </div>
+                <div className="flex flex-col mt-2">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    className="mt-2 px-2 py-1 border border-black rounded"
+                    required
+                    placeholder="Email"
+                    name="email"
+                    value={values.email}
+                    onChange={change}
+                  />
+                </div>
+                <div className="flex flex-col mt-2">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    className="mt-2 px-2 py-1 border border-black rounded"
+                    required
+                    placeholder="Password"
+                    name="password"
+                    value={values.password}
+                    onChange={change}
+                  />
+                </div>
+                <div className="flex flex-col mt-4">
+                  <button
+                    className="bg-green-900 font-semibold rounded py-2 text-xl text-white"
+                    type="submit"
+                  >
+                    SignUp
+                  </button>
+                </div>
+              </form>
               <div className="text-center mt-2 font-semibold">or</div>
-              <div className="flex flex mt-4 text-bold">
+              <div className="flex  mt-4 text-bold">
                 Already have an account?
                 <Link
                   className="font-semibold hover:text-blue-600"

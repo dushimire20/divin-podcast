@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Link } from "react-router-dom";
 
 const Categories = () => {
@@ -48,7 +48,7 @@ const Categories = () => {
           <Link
             key={index}
             to={category.to}
-            className={`p-6 ${category.color} rounded-lg shadow-lg hover:scale-105 shadow-xl transition-all duration-200 h-[24vh] md:h-[40vh] lg:h-[30vh] overflow-hidden`}
+            className={`p-6 ${category.color} rounded-lg hover:scale-105 shadow-xl transition-all duration-200 h-[24vh] md:h-[40vh] lg:h-[30vh] overflow-hidden`}
           >
             <img
               src={category.img}

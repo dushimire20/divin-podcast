@@ -8,7 +8,7 @@ const DescriptionPage = () => {
   useEffect(() => {
     const fetch = async () => {
       const res = await axios(
-        `http://localhost:7000/api/v1/get-podcast/${id}`,
+        `http://localhost:8080/api/v1/get-podcast/${id}`,
         {
           withCredentials: true,
         }

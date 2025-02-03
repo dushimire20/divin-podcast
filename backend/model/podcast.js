@@ -26,8 +26,7 @@ const podcasts = new mongoose.Schema(
       ref: "user",
     },
     category: {
-      type: mongoose.Types.ObjectId,
-      ref: "category",
+      type: String,
     },
   },
   { timestamps: true }

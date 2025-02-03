@@ -6,46 +6,48 @@ import { authAction } from "../../store/auth";
 import { useNavigate } from "react-router-dom";
 
 const Header = () => {
-  const [userData, setUserData] = useState();
+  const [userData, setUserData] = useState(null);
   const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await axios("http://localhost:7000/api/v1/user-details", {
+        const res = await axios.get("http://localhost:8080/api/v1/user-details", {
           withCredentials: true,
         });
-
-        setUserData(res.data.user);
-        // console.log(res.data.user);
+        setUserData(res.data);
       } catch (error) {
-        toast.error(error.response.data.message);
+        toast.error(error.response?.data?.message || "An error occurred");
       }
     };
-    fetchDetails();
-  }, []);
+
+    if (isLoggedIn) {
+      fetchDetails();
+    }
+  }, [isLoggedIn]);
+
   const handleOnClickLogOut = async () => {
     try {
-      const res = await axios.post(
-        "http://localhost:7000/api/v1/log-out",
+      await axios.post(
+        "http://localhost:8080/api/v1/log-out",
         {},
         { withCredentials: true }
       );
 
       dispatch(authAction.logout());
-
       navigate("/");
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "An error occurred");
     }
   };
+
   return (
     <>
+      <ToastContainer />
       {userData && (
         <div className="bg-gradient-to-r from-green-700 to-green-900 p-4 md:p-6 lg:p-8 shadow-md">
-          <ToastContainer />
-
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left">
               <p className="text-2xl text-white font-bold transition-transform transform hover:scale-105">

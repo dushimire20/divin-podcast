@@ -1,22 +1,32 @@
 const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
 const User = require("../model/user");
+const { verifyToken } = require("../utils/helper");
 
-const authMiddleware = async (req, res, next) => {
-  const token = req.cookies.podcasterUserToken;
+const authenticateToken = async (req, res, next) => {
+  // Retrieve token from cookies or headers
+  const token = req.cookies.podcasterUserToken || req.header("Authorization")?.replace("Bearer ", "");
+
   try {
-    if (token) {
-      const decode = jwt.verify(token, process.env.KEY);
-      const user = await User.findById(decode.id);
-      if (!user) {
-        res.status(404).send({ message: "User not found" });
-      }
-      req.user = user;
-      next();
+    if (!token) {
+      return res.status(401).json({ message: "Access denied. No token provided." });
     }
+
+    // Verify token
+    const decoded = await verifyToken(token);
+
+    // Fetch user from database
+    const user = await User.findOne({ _id: decoded.id });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Attach user to request object
+    req.user = user;
+    next();
   } catch (error) {
-    res.status(500).send({ message: "Invalid token" });
+    console.error("Authentication error:", error.message);
+    return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
 
-module.exports = authMiddleware;
+module.exports = authenticateToken;

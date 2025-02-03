@@ -5,19 +5,36 @@ import PodcastCard from "../PodcastCard/PodcastCard";
 
 const UserPodcast = () => {
   const [userPodcast, setUserPodcast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     const fetch = async () => {
-      const res = await axios(
-        "http://localhost:7000/api/v1/get-user-podcasts",
-        {
-          withCredentials: true,
-        }
-      );
-      // console.log(res.data.data);
-      setUserPodcast(res.data.data);
+      try {
+        const res = await axios.get(
+          "http://localhost:8080/api/v1/get-user-podcasts",
+          {
+            withCredentials: true,
+          }
+        );
+        setUserPodcast(res.data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "An error occurred");
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, []);
+
+  if (loading) {
+    return <div className="px-4 lg:px-12 my-4 pb-20">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="px-4 lg:px-12 my-4 pb-20">{error}</div>;
+  }
+
   return (
     <div className="px-4 lg:px-12 my-4 pb-20">
       <div className="flex justify-between items-center gap-4">
